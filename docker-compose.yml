@@ -1,0 +1,43 @@
+version: '3.9'
+services:
+  oms:
+    image: marcinkunert/oms:latest
+    ports:
+      - '8080:8080'
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:8080/OMS || exit
+      interval: 1s
+      timeout: 100ms
+      retries: 100
+      start_period: 6s
+  mysql:
+    image: mysql:8.0.31
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: qwerty
+      MYSQL_DATABASE: oms
+      MYSQL_USER: oms
+      MYSQL_PASSWORD: 1qaz2wsx
+    healthcheck:
+      test: mysql --protocol=socket -h localhost -u root -p$$MYSQL_ROOT_PASSWORD -e 'SELECT 1'
+      start_period: 10s
+      interval: 1s
+      timeout: 100ms
+      retries: 100
+  init-adder:
+    image: mysql:8.0.31
+    depends_on:
+      oms:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: 'no'
+    volumes:
+      - ./init.sql:/init.sql
+    entrypoint: [ 'bash', '-c', 'mysql -h mysql -u oms --password=1qaz2wsx oms < /init.sql' ]
+
+
